@@ -81,8 +81,13 @@ llm_model_dict = {
 # LLM 名称
 LLM_MODEL = "chatglm2-6b"
 
-# LLM 运行设备
-LLM_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+# 历史对话轮数
+HISTORY_LEN = 3
+
+# LLM 运行设备。设为"auto"会自动检测，也可手动设定为"cuda","mps","cpu"其中之一。
+LLM_DEVICE = "auto"
+
 
 # 日志存储路径
 LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
