@@ -1,5 +1,7 @@
 from .model_config import LLM_MODEL, LLM_DEVICE
 
+HTTPX_DEFAULT_TIMEOUT = 300.0
+
 # API 是否开启跨域，默认为False，如果需要开启，请设置为True
 # is open cross domain
 OPEN_CROSS_DOMAIN = False
