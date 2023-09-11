@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from configs.server_config import FSCHAT_MODEL_WORKERS
 from webui_pages.utils import *
 from streamlit_chatbox import *
@@ -73,7 +74,9 @@ def dialogue_page(api: ApiRequest):
             return x
 
         running_models = api.list_running_models()
+        # running_models = list(["chatglm2-6b"])
         config_models = api.list_config_models()
+        # config_models = list(["chatglm2-6b"])
         for x in running_models:
             if x in config_models:
                 config_models.remove(x)
@@ -103,6 +106,7 @@ def dialogue_page(api: ApiRequest):
         if dialogue_mode == "知识库问答":
             with st.expander("知识库配置", True):
                 kb_list = api.list_knowledge_bases(no_remote_api=True)
+                # kb_list = ["kb1", "kb2"]
                 selected_kb = st.selectbox(
                     "请选择知识库：",
                     kb_list,
@@ -128,6 +132,54 @@ def dialogue_page(api: ApiRequest):
     chat_box.output_messages()
 
     chat_input_placeholder = "请输入对话内容，换行请使用Shift+Enter "
+    uploaded_file = None
+    if dialogue_mode == "知识库问答":
+        uploaded_file = st.file_uploader("Choose a file")
+    if uploaded_file is not None:
+        if dialogue_mode == "知识库问答":
+            history = get_messages_history(history_len)
+    
+            # Handle file upload
+            if uploaded_file is not None:
+                chat_box.user_say(f"上传文件: {uploaded_file.name}")
+                try:
+                    
+                    chat_box.ai_say("正在分析文件内容...")
+                    # Process file by using pandas
+                    
+                    df = pd.read_csv(uploaded_file)
+                    text = "如下信息是否包含个人敏感信息 并指出敏感信息"
+                    text += f"文件包含{len(df)}行数据,列标题如下:\n"
+                    for col in df.columns:
+                        text += f"-{col}\n"
+                        chat_box.update_msg(text, streaming=False)
+                    # Read data from df into a string   
+                    file_content = ""
+                    row = len(df)
+                    # read each row and append to text
+                    for i in range(row):
+                        row_data = df.iloc[i]
+                        file_content += f"第{i+1}行数据: " + row_data.to_string() + "\n"
+
+                    text += "文件数据内容如下:\n" + file_content
+
+                    chat_box.update_msg(text, streaming=False)
+                    chat_box.ai_say("文件内容分析完毕...")
+
+                    chat_box.ai_say("正在查询知识库...")
+                    text = ""
+                    # Call knowledge base API
+                    for d in api.knowledge_base_chat(file_content, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
+                        if error_msg := check_error_msg(d):
+                            st.error(error_msg)
+                        else:
+                            text += d["answer"]
+                            chat_box.update_msg(text, 0)
+                            chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
+                    chat_box.update_msg(text, 0, streaming=False)
+                except Exception as e:
+                    st.error(f"文件分析失败:{e}")
+
 
     if prompt := st.chat_input(chat_input_placeholder, key="prompt"):
         history = get_messages_history(history_len)
@@ -145,18 +197,60 @@ def dialogue_page(api: ApiRequest):
             chat_box.update_msg(text, streaming=False)  # 更新最终的字符串，去除光标
         elif dialogue_mode == "知识库问答":
             history = get_messages_history(history_len)
-            chat_box.ai_say([
-                f"正在查询知识库 `{selected_kb}` ...",
-                Markdown("...", in_expander=True, title="知识库匹配结果"),
-            ])
-            text = ""
-            for d in api.knowledge_base_chat(prompt, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
-                if error_msg := check_error_msg(d): # check whether error occured
-                    st.error(error_msg)
-                text += d["answer"]
-                chat_box.update_msg(text, 0)
-                chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
-            chat_box.update_msg(text, 0, streaming=False)
+            
+            if uploaded_file is None:
+                chat_box.ai_say([
+                    f"正在查询知识库 `{selected_kb}` ...",
+                    Markdown("...", in_expander=True, title="知识库匹配结果"),
+                ])
+                text = ""
+                for d in api.knowledge_base_chat(prompt, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
+                    if error_msg := check_error_msg(d): # check whether error occured
+                        st.error(error_msg)
+                    text += d["answer"]
+                    chat_box.update_msg(text, 0)
+                    chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
+                chat_box.update_msg(text, 0, streaming=False)
+            else:
+                # Handle file upload
+                if uploaded_file is not None:
+                    chat_box.user_say(f"上传文件: {uploaded_file.name}")
+                    try:
+                        
+                        chat_box.ai_say("正在分析文件内容...")
+                        # Process file by using pandas
+                        
+                        df = pd.read_csv(uploaded_file)
+                        text = f"文件包含{len(df)}行数据,列标题如下:\n"
+                        for col in df.columns:
+                            text += f"-{col}\n"
+                            chat_box.update_msg(text, streaming=False)
+                        # Read data from df into a string   
+                        file_content = ""
+                        row = len(df)
+                        # read each row and append to text
+                        for i in range(row):
+                            row_data = df.iloc[i]
+                            file_content += f"第{i+1}行数据: " + row_data.to_string() + "\n"
+
+                        text += "文件数据内容如下:\n" + file_content
+                        chat_box.update_msg(text, streaming=False)
+                        chat_box.ai_say("文件内容分析完毕...")
+
+                        chat_box.ai_say("正在查询知识库...")
+                        text = ""
+                        # Call knowledge base API
+                        for d in api.knowledge_base_chat(file_content, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
+                            if error_msg := check_error_msg(d):
+                                st.error(error_msg)
+                            else:
+                                text += d["answer"]
+                                chat_box.update_msg(text, 0)
+                                chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
+                        chat_box.update_msg(text, 0, streaming=False)
+                    except Exception as e:
+                        st.error(f"文件分析失败:{e}")
+
         elif dialogue_mode == "搜索引擎问答":
             chat_box.ai_say([
                 f"正在执行 `{search_engine}` 搜索...",
@@ -171,23 +265,23 @@ def dialogue_page(api: ApiRequest):
                     chat_box.update_msg(text, 0)
                     chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
             chat_box.update_msg(text, 0, streaming=False)
+        
+        now = datetime.now()
+        with st.sidebar:
 
-    now = datetime.now()
-    with st.sidebar:
+            cols = st.columns(2)
+            export_btn = cols[0]
+            if cols[1].button(
+                    "清空对话",
+                    use_container_width=True,
+            ):
+                chat_box.reset_history()
+                st.experimental_rerun()
 
-        cols = st.columns(2)
-        export_btn = cols[0]
-        if cols[1].button(
-                "清空对话",
-                use_container_width=True,
-        ):
-            chat_box.reset_history()
-            st.experimental_rerun()
-
-    export_btn.download_button(
-        "导出记录",
-        "".join(chat_box.export2md()),
-        file_name=f"{now:%Y-%m-%d %H.%M}_对话记录.md",
-        mime="text/markdown",
-        use_container_width=True,
-    )
+        export_btn.download_button(
+            "导出记录",
+            "".join(chat_box.export2md()),
+            file_name=f"{now:%Y-%m-%d %H.%M}_对话记录.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
