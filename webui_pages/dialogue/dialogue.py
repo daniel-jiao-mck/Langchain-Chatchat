@@ -138,7 +138,7 @@ def dialogue_page(api: ApiRequest):
     if uploaded_file is not None:
         if dialogue_mode == "知识库问答":
             history = get_messages_history(history_len)
-    
+            text = "如下信息是否包含个人敏感信息 并指出敏感信息 "
             # Handle file upload
             if uploaded_file is not None:
                 chat_box.user_say(f"上传文件: {uploaded_file.name}")
@@ -148,7 +148,7 @@ def dialogue_page(api: ApiRequest):
                     # Process file by using pandas
                     
                     df = pd.read_csv(uploaded_file)
-                    text = "如下信息是否包含个人敏感信息 并指出敏感信息 "
+
                     text += f"文件包含{len(df)}行数据,列标题如下:\n"
                     for col in df.columns:
                         text += f"-{col}\n"
@@ -165,20 +165,21 @@ def dialogue_page(api: ApiRequest):
 
                     chat_box.update_msg(text, streaming=False)
                     chat_box.ai_say("文件内容分析完毕...")
-
-                    chat_box.ai_say("正在查询知识库...")
-                    text = ""
-                    # Call knowledge base API
-                    for d in api.knowledge_base_chat(file_content, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
-                        if error_msg := check_error_msg(d):
-                            st.error(error_msg)
-                        else:
-                            text += d["answer"]
-                            chat_box.update_msg(text, 0)
-                            chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
-                    chat_box.update_msg(text, 0, streaming=False)
                 except Exception as e:
                     st.error(f"文件分析失败:{e}")
+
+                chat_box.ai_say("正在查询知识库...")
+                text = ""
+                # Call knowledge base API
+                for d in api.knowledge_base_chat(file_content, selected_kb, kb_top_k, score_threshold, history, model=llm_model):
+                    if error_msg := check_error_msg(d):
+                        st.error(error_msg)
+                    else:
+                        text += d["answer"]
+                        chat_box.update_msg(text, 0)
+                        chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
+                chat_box.update_msg(text, 0, streaming=False)
+
 
 
     if prompt := st.chat_input(chat_input_placeholder, key="prompt"):
