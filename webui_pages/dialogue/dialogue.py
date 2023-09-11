@@ -177,7 +177,7 @@ def dialogue_page(api: ApiRequest):
                     else:
                         text += d["answer"]
                         chat_box.update_msg(text, 0)
-                        chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
+                        # chat_box.update_msg("\n\n".join(d["docs"]), 1, streaming=False)
                 chat_box.update_msg(text, 0, streaming=False)
 
 
