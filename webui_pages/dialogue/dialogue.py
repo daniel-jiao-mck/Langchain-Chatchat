@@ -148,7 +148,7 @@ def dialogue_page(api: ApiRequest):
                     # Process file by using pandas
                     
                     df = pd.read_csv(uploaded_file)
-                    text = "如下信息是否包含个人敏感信息 并指出敏感信息"
+                    text = "如下信息是否包含个人敏感信息 并指出敏感信息 "
                     text += f"文件包含{len(df)}行数据,列标题如下:\n"
                     for col in df.columns:
                         text += f"-{col}\n"
