@@ -1,5 +1,6 @@
 import os
 import logging
+import torch
 # 日志格式
 LOG_FORMAT = "%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s"
 logger = logging.getLogger()
@@ -19,7 +20,7 @@ embedding_model_dict = {
     "text2vec-sentence": "shibing624/text2vec-base-chinese-sentence",
     "text2vec-multilingual": "shibing624/text2vec-base-multilingual",
     "m3e-small": "moka-ai/m3e-small",
-    "m3e-base": "moka-ai/m3e-base",
+    "m3e-base": "/root/m3e-base",
     "m3e-large": "moka-ai/m3e-large",
     "bge-small-zh": "BAAI/bge-small-zh",
     "bge-base-zh": "BAAI/bge-base-zh",
@@ -31,8 +32,9 @@ embedding_model_dict = {
 # 选用的 Embedding 名称
 EMBEDDING_MODEL = "m3e-base"
 
-# Embedding 模型运行设备。设为"auto"会自动检测，也可手动设定为"cuda","mps","cpu"其中之一。
-EMBEDDING_DEVICE = "auto"
+# Embedding 模型运行设备
+EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
 
 llm_model_dict = {
     "chatglm-6b": {
@@ -42,8 +44,8 @@ llm_model_dict = {
     },
 
     "chatglm2-6b": {
-        "local_model_path": "THUDM/chatglm2-6b",
-        "api_base_url": "http://localhost:8888/v1",  # URL需要与运行fastchat服务端的server_config.FSCHAT_OPENAI_API一致
+        "local_model_path": "/root/model/chatglm2-6b",
+        "api_base_url": "http://localhost:10001/v1",  # URL需要与运行fastchat服务端的server_config.FSCHAT_OPENAI_API一致
         "api_key": "EMPTY"
     },
 
@@ -67,32 +69,25 @@ llm_model_dict = {
     # 如果出现WARNING: Retrying langchain.chat_models.openai.acompletion_with_retry.<locals>._completion_with_retry in
     # 4.0 seconds as it raised APIConnectionError: Error communicating with OpenAI.
     # 需要添加代理访问(正常开的代理软件可能会拦截不上)需要设置配置openai_proxy 或者 使用环境遍历OPENAI_PROXY 进行设置
-    # 比如: "openai_proxy": 'http://127.0.0.1:4780'
     "gpt-3.5-turbo": {
+        "local_model_path": "gpt-3.5-turbo",
         "api_base_url": "https://api.openai.com/v1",
         "api_key": os.environ.get("OPENAI_API_KEY"),
         "openai_proxy": os.environ.get("OPENAI_PROXY")
     },
-    # 线上模型。当前支持智谱AI。
-    # 如果没有设置有效的local_model_path，则认为是在线模型API。
-    # 请在server_config中为每个在线API设置不同的端口
-    # 具体注册及api key获取请前往 http://open.bigmodel.cn
-    "chatglm-api": {
-        "api_base_url": "http://127.0.0.1:8888/v1",
-        "api_key": os.environ.get("ZHIPUAI_API_KEY"),
-        "provider": "ChatGLMWorker",
-        "version": "chatglm_pro",  # 可选包括 "chatglm_lite", "chatglm_std", "chatglm_pro"
-    },
 }
+
 
 # LLM 名称
 LLM_MODEL = "chatglm2-6b"
+
 
 # 历史对话轮数
 HISTORY_LEN = 3
 
 # LLM 运行设备。设为"auto"会自动检测，也可手动设定为"cuda","mps","cpu"其中之一。
 LLM_DEVICE = "auto"
+
 
 # 日志存储路径
 LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
