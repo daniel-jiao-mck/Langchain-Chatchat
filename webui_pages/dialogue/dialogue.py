@@ -159,9 +159,9 @@ def dialogue_page(api: ApiRequest):
                     # read each row and append to text
                     for i in range(row):
                         row_data = df.iloc[i]
-                        file_content += f"第{i+1}行数据: " + row_data.to_string() + "\n"
+                        file_content += f" " + row_data.to_string() + "\n"
 
-                    text += "文件数据内容如下:\n" + file_content
+                    text += " 文件数据内容如下:\n" + file_content
 
                     chat_box.update_msg(text, streaming=False)
                     chat_box.ai_say("文件内容分析完毕...")
